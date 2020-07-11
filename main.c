@@ -111,11 +111,11 @@ void setup_TMR0_for_interrupts(void) {
     T0IE = 1; // enable TMR0 interrupt
 }
 
-void toggle_led_task(void) {
+enum button_push_state_t {
+    bpPushed, bpReleased, bpMaybeReleased
+};
 
-    enum button_push_state_t {
-        bpPushed, bpReleased, bpMaybeReleased
-    };
+void toggle_led_task(void) {
     static enum button_push_state_t state = bpReleased;
     static unsigned char lda; // lda: last done at
     const unsigned char t = 20; // about 20 ms
@@ -151,11 +151,11 @@ void toggle_led_task(void) {
     }
 }
 
-void adc_drive_led_task(void) {
+enum adc_conversion_state_t {
+    start, complete
+};
 
-    enum adc_conversion_state_t {
-        start, complete
-    };
+void adc_drive_led_task(void) {
     static enum adc_conversion_state_t state = start;
     static unsigned char lda; // lda: last done at
     unsigned char t = 19; // about 19 ms
