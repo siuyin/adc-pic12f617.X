@@ -99,7 +99,6 @@ void setup_TMR0_for_interrupts(void) {
     // Fosc = 1/(2RC)
     // Tcyc = 4/Fosc
     // TMR0_t = prescaler * Tcyc
-    // If R=6.8k and C=100pF, and prescaler = 256, each TMR0_t = 1.39 ms
     PSA = 0; // 0: Assign prescaler to TMR0
     PS2 = 1;
     PS1 = 1;
