@@ -17,3 +17,6 @@ a conversion time of 44 us.
 ECCP's PWM mode requires Timer 2 as a resource.
 
 
+# system timer
+TMR0 drives the system timer with a tick period of 1.024 ms.
+

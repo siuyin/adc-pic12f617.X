@@ -22,18 +22,47 @@
 
 #include <xc.h>
 
-
 #define _XTAL_FREQ 8000000
 #define BUTTON GP3
 #define LOWER_LED GP4
 #define UPPER_LED GP5
 
+volatile unsigned char toggle_led_ctr = 0;
+volatile unsigned char adc_drive_led_ctr = 0;
+volatile unsigned char tick; // system timer tick is 1.024 ms
+
+void setup_gpio(void);
+void setup_adc(void);
+void setup_TMR0_for_interrupts(void);
+void adc_drive_led_task(void);
+void toggle_led_task(void);
+
 void main(void) {
+    setup_gpio();
+    setup_adc();
+    setup_TMR0_for_interrupts();
+    ei();
+
+    while (1) {
+        adc_drive_led_task();
+        toggle_led_task();
+    }
+
+    return;
+}
+
+
+
+void setup_gpio(void) {
     // Initialise I/O
     GPIO = 0;
     ANSEL = 0b1110100; // ADC clock derived from a dedicated internal oscillator = 500 kHz max; GP2/AN2 is analog input.
     TRISIO = 0b001100; // GP2 and GP4 are an inputs.
+}
 
+
+
+void setup_adc(void) {
     // Setup ADC.
     CHS0 = 0; // Channel 2 selected for AN2.
     CHS1 = 1;
@@ -56,22 +85,119 @@ void main(void) {
     T2CKPS1 = 0; // timer 2 prescaler = 4
     TMR2IF = 0; // clear timer 2 interrupt request flag.
     TMR2ON = 1; // turn on timer 2
-    
+
     while (TMR2IF == 0) { // wait for timer 2 to overflow before enabling output
     }
 
     TRISIO5 = 0; // enable GP5/P1A* output.
+}
 
-    while (1) {
 
-        GO_nDONE = 1;   // start conversion
-        while (GO_nDONE == 1) { // wait for it to complete. order of 100 us.
-        }
 
-        CCPR1L = ADRESH; // write ADC value to PWM duty cycle register
+const unsigned char tmr0_reload_val = 246;
 
-        __delay_ms(20);
+void setup_TMR0_for_interrupts(void) {
+    tick = 0;
+
+    // example:
+    // Fosc = 1/(2RC)
+    // Tcyc = 4/Fosc
+    // TMR0_t = prescaler * Tcyc
+    // If R=6.8k and C=100pF, and prescaler = 256, each TMR0_t = 1.39 ms
+    PSA = 0; // 0: Assign prescaler to TMR0
+    PS2 = 1;
+    PS1 = 1;
+    PS0 = 1;
+
+    TMR0 = tmr0_reload_val; // setup for 256 - x counts before triggering interrupt.
+    T0CS = 0; // 0: TMR0 counter source is internal clock
+
+    T0IE = 1; // enable TMR0 interrupt
+}
+
+
+
+enum button_push_state_t {
+    bpPushed, bpReleased, bpMaybeReleased
+};
+
+void toggle_led_task(void) {
+    static enum button_push_state_t state = bpReleased;
+    static unsigned char lda; // lda: last done at
+    const unsigned char t = 20; // about 20 ms
+
+    if (toggle_led_ctr != 0 || lda == tick) {
+        return;
     }
 
-    return;
+    lda = tick;
+    toggle_led_ctr = t;
+
+    switch (state) {
+        case bpReleased:
+            if (BUTTON == 0) {
+                state = bpPushed;
+                LOWER_LED = ~LOWER_LED;
+            }
+            break;
+        case bpPushed:
+            if (BUTTON == 0) {
+                state = bpPushed;
+                break;
+            }
+            state = bpMaybeReleased;
+            break;
+        case bpMaybeReleased:
+            if (BUTTON == 0) {
+                state = bpPushed;
+                break;
+            }
+            state = bpReleased;
+            break;
+    }
+}
+
+
+
+enum adc_conversion_state_t {
+    start, complete
+};
+
+void adc_drive_led_task(void) {
+    static enum adc_conversion_state_t state = start;
+    static unsigned char lda; // lda: last done at
+    unsigned char t = 19; // about 19 ms
+
+    if (adc_drive_led_ctr != 0 || lda == tick) {
+        return;
+    }
+    switch (state) {
+        case start:
+            GO_nDONE = 1;
+            t = 1; // 1 ms is more than enough for ADC conversion.
+            state = complete;
+            break;
+        case complete:
+            CCPR1L = ADRESH; // write ADC value to PWM duty cycle register
+            t = 19;
+            state = start;
+            break;
+    }
+
+}
+
+
+
+// interrupt service routine
+
+void __interrupt() interrupt_service_routine(void) {
+    if (T0IE && T0IF) { // timer 0 interrupt enable and interrupt flag
+        if (toggle_led_ctr > 0)toggle_led_ctr--;
+        if (adc_drive_led_ctr > 0)adc_drive_led_ctr--;
+
+        tick++;
+
+        TMR0 = tmr0_reload_val; // reload TMR0 for next tick
+        T0IF = 0; // clear TMR0 interrupt flag
+    }
 }
