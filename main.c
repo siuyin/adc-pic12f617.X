@@ -51,16 +51,12 @@ void main(void) {
     return;
 }
 
-
-
 void setup_gpio(void) {
     // Initialise I/O
     GPIO = 0;
     ANSEL = 0b1110100; // ADC clock derived from a dedicated internal oscillator = 500 kHz max; GP2/AN2 is analog input.
     TRISIO = 0b001100; // GP2 and GP4 are an inputs.
 }
-
-
 
 void setup_adc(void) {
     // Setup ADC.
@@ -115,13 +111,11 @@ void setup_TMR0_for_interrupts(void) {
     T0IE = 1; // enable TMR0 interrupt
 }
 
-
-
-enum button_push_state_t {
-    bpPushed, bpReleased, bpMaybeReleased
-};
-
 void toggle_led_task(void) {
+
+    enum button_push_state_t {
+        bpPushed, bpReleased, bpMaybeReleased
+    };
     static enum button_push_state_t state = bpReleased;
     static unsigned char lda; // lda: last done at
     const unsigned char t = 20; // about 20 ms
@@ -157,13 +151,11 @@ void toggle_led_task(void) {
     }
 }
 
-
-
-enum adc_conversion_state_t {
-    start, complete
-};
-
 void adc_drive_led_task(void) {
+
+    enum adc_conversion_state_t {
+        start, complete
+    };
     static enum adc_conversion_state_t state = start;
     static unsigned char lda; // lda: last done at
     unsigned char t = 19; // about 19 ms
