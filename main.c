@@ -23,6 +23,7 @@
 #include <xc.h>
 
 
+#define _XTAL_FREQ 8000000
 #define BUTTON GP3
 #define LOWER_LED GP4
 #define UPPER_LED GP5
@@ -33,9 +34,29 @@ void main(void) {
     ANSEL = 0b1110100; // ADC clock derived from a dedicated internal oscillator = 500 kHz max; GP2/AN2 is analog input.
     TRISIO = 0b001100; // GP2 and GP4 are an inputs.
 
+    // Setup ADC.
+    CHS0 = 0; // Channel 2 selected for AN2.
+    CHS1 = 1;
+    CHS2 = 0;
+
+    ADFM = 0; // ADC output format with most significant bits in ADRESH (AD result high).
+    ADON = 1; // Turn on ADC.
+
     while (1) {
-        LOWER_LED = ~BUTTON;
-        UPPER_LED = BUTTON;
+
+        GO_nDONE = 1;
+
+        while (GO_nDONE == 1) {
+        }
+
+        if (ADRESH > 128) {
+            LOWER_LED = 1;
+            UPPER_LED = 0;
+        } else {
+            LOWER_LED = 0;
+            UPPER_LED = 1;
+        }
+        __delay_ms(20);
     }
 
     return;
