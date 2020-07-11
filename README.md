@@ -12,3 +12,8 @@ an internal RC oscillator with an ADC conversion
 time (Tad) of 2 to 6 microseconds per bit. A 10-bit conversion
 requires 11 Tad or a maximum of 66 us. Typical Tad is 4 us for
 a conversion time of 44 us.
+
+# Enhanced Capture / Compare / PWM module (ECCP)
+ECCP's PWM mode requires Timer 2 as a resource.
+
+

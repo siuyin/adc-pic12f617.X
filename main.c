@@ -42,20 +42,34 @@ void main(void) {
     ADFM = 0; // ADC output format with most significant bits in ADRESH (AD result high).
     ADON = 1; // Turn on ADC.
 
+    // PWM setup.
+    TRISIO5 = 1; // Disable the output driver to GP5.
+    P1ASEL = 1; // Select P1A*, the alternative P1A output on GP5.
+    PR2 = 0x65; // set PWM period: ((PR2)+1) * 4 * Tosc * TMR2 prescaler value. ((101+1)*4*Tosc*4 = 128 us.
+    P1M = 0; // PWM output on P1A
+    CCP1M0 = 0;
+    CCP1M1 = 0;
+    CCP1M2 = 1;
+    CCP1M3 = 1; // 1100 =PWM mode; P1A active-high; P1B active-high
+
+    T2CKPS0 = 1;
+    T2CKPS1 = 0; // timer 2 prescaler = 4
+    TMR2IF = 0; // clear timer 2 interrupt request flag.
+    TMR2ON = 1; // turn on timer 2
+    
+    while (TMR2IF == 0) { // wait for timer 2 to overflow before enabling output
+    }
+
+    TRISIO5 = 0; // enable GP5/P1A* output.
+
     while (1) {
 
-        GO_nDONE = 1;
-
-        while (GO_nDONE == 1) {
+        GO_nDONE = 1;   // start conversion
+        while (GO_nDONE == 1) { // wait for it to complete. order of 100 us.
         }
 
-        if (ADRESH > 128) {
-            LOWER_LED = 1;
-            UPPER_LED = 0;
-        } else {
-            LOWER_LED = 0;
-            UPPER_LED = 1;
-        }
+        CCPR1L = ADRESH; // write ADC value to PWM duty cycle register
+
         __delay_ms(20);
     }
 
