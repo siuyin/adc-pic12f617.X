@@ -26,26 +26,32 @@
 #define BUTTON GP3
 #define LOWER_LED GP4
 #define UPPER_LED GP5
+#define ALT_LED GP0
 
+// Global variables used by main and interrupt service routine.
 volatile unsigned char toggle_led_ctr = 0;
 volatile unsigned char adc_drive_led_ctr = 0;
 volatile unsigned char tick; // system timer tick is 1.024 ms
 
 void setup_gpio(void);
 void setup_adc(void);
+void setup_comparator(void);
 void setup_TMR0_for_interrupts(void);
-void adc_drive_led_task(void);
+void adc_sense_led_task(void);
 void toggle_led_task(void);
+void comparator_sense_alt_led_task(void);
 
 void main(void) {
     setup_gpio();
     setup_adc();
+    setup_comparator();
     setup_TMR0_for_interrupts();
     ei();
 
     while (1) {
-        adc_drive_led_task();
+        adc_sense_led_task();
         toggle_led_task();
+        comparator_sense_alt_led_task();
     }
 
     return;
@@ -54,8 +60,8 @@ void main(void) {
 void setup_gpio(void) {
     // Initialise I/O
     GPIO = 0;
-    ANSEL = 0b1110100; // ADC clock derived from a dedicated internal oscillator = 500 kHz max; GP2/AN2 is analog input.
-    TRISIO = 0b001100; // GP2 and GP4 are an inputs.
+    ANSEL = 0b1110110; // ADC clock derived from a dedicated internal oscillator = 500 kHz max; GP2/AN2 is analog input. GP1 for comparator input.
+    TRISIO = 0b001110; // GP1, GP2 and GP3 are an inputs.
 }
 
 void setup_adc(void) {
@@ -88,6 +94,14 @@ void setup_adc(void) {
     TRISIO5 = 0; // enable GP5/P1A* output.
 }
 
+void setup_comparator(void) {
+    CMR = 1; // comparator +ve connected to comparator Vref output
+    CMPOL = 1; // invert comparator output logic. Cout is high when V- > V+.
+    CMHYS = 1; // enable comparator hysterisis.
+    VR3 = 1; // configure voltage reference to Vdd/2. See below.
+    CMVREN = 1; // turn on comparator voltage reference. On reset comparator voltage reference output is Vdd/4, with VR3==1 this adds Vdd/4 for Vdd/2.s
+    CMON = 1; // turn on comparator
+}
 
 
 const unsigned char tmr0_reload_val = 246;
@@ -150,11 +164,19 @@ void toggle_led_task(void) {
     }
 }
 
+void comparator_sense_alt_led_task(void) {
+    if (COUT) { // COUT: comparator output
+        ALT_LED = 1;
+        return;
+    }
+    ALT_LED = 0;
+}
+
 enum adc_conversion_state_t {
     start, complete
 };
 
-void adc_drive_led_task(void) {
+void adc_sense_led_task(void) {
     static enum adc_conversion_state_t state = start;
     static unsigned char lda; // lda: last done at
     unsigned char t = 19; // about 19 ms

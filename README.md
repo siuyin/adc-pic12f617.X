@@ -5,6 +5,9 @@
 - GP4 positive logic output driving lower LED
 - GP5 positive logic output driving upper LED
 - GP2/AN2 analog input connected to potentiometer
+- GP1/comparator input 0 -ve, tied to GP2/AN2
+- GP0 positive logic output driving alternative LED (intermittently connected
+ via flying lead)
 
 # ADC: Analog to Digital Converter
 The analog to digital converter is configured to use
